@@ -80,8 +80,9 @@ impl<F: FieldExt> FibonacciChip<F> {
         layouter.assign_region(
             || "first row",
             |mut region| {
+                // enable selector in 0th row. (offset is relative.)
                 self.config.selector.enable(&mut region, 0)?;
-
+                //copy 0th row instance into 0th row advice column a (row in advice column is called offset)
                 let a_cell = region.assign_advice_from_instance(
                     || "f(0)",
                     self.config.instance,
@@ -89,7 +90,7 @@ impl<F: FieldExt> FibonacciChip<F> {
                     self.config.col_a,
                     0,
                 )?;
-
+                //copy 1st row instance into 0th row advice column b
                 let b_cell = region.assign_advice_from_instance(
                     || "f(1)",
                     self.config.instance,
@@ -97,7 +98,7 @@ impl<F: FieldExt> FibonacciChip<F> {
                     self.config.col_b,
                     0,
                 )?;
-
+                // just assign value into the cell.
                 let c_cell = region.assign_advice(
                     || "a + b",
                     self.config.col_c,
@@ -142,6 +143,7 @@ impl<F: FieldExt> FibonacciChip<F> {
         &self,
         mut layouter: impl Layouter<F>,
         cell: &AssignedCell<F, F>,
+        // absolute row to the instance.
         row: usize,
     ) -> Result<(), Error> {
         layouter.constrain_instance(cell.cell(), self.config.instance, row)
@@ -164,6 +166,8 @@ impl<F: FieldExt> Circuit<F> for MyCircuit<F> {
 
     // Has the arrangement of columns. Called only during keygen, and will just call chip config most of the time
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
+        // look halo part 1 at around time 1.00.00 or can define column in this, so can re use this column 
+        // to different chips, giving control which columns to reuse
         FibonacciChip::configure(meta)
     }
 
@@ -185,7 +189,7 @@ impl<F: FieldExt> Circuit<F> for MyCircuit<F> {
             prev_b = prev_c;
             prev_c = c_cell;
         }
-
+        // use row = 2 since already use 0 and 1
         chip.expose_public(layouter.namespace(|| "out"), &prev_c, 2)?;
 
         Ok(())
