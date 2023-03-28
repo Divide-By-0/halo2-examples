@@ -1,6 +1,6 @@
 use halo2_proofs::{arithmetic::FieldExt, circuit::*, plonk::*, poly::Rotation};
 use std::marker::PhantomData;
-
+// last one (example1) just copy b,c (permutation check) too much.
 #[derive(Debug, Clone)]
 struct ACell<F: FieldExt>(AssignedCell<F, F>);
 
@@ -31,7 +31,7 @@ impl<F: FieldExt> FibonacciChip<F> {
         instance: Column<Instance>,
     ) -> FibonacciConfig {
         let selector = meta.selector();
-
+        // still need this to constraint input and output
         meta.enable_equality(advice);
         meta.enable_equality(instance);
 
@@ -55,7 +55,8 @@ impl<F: FieldExt> FibonacciChip<F> {
             instance,
         }
     }
-
+    // unlike ver1 where region = 1 row covers all stuffs in our custom gate, 
+    // now we decide to define region as all table. Hence no longer assign_row fn.
     pub fn assign(
         &self,
         mut layouter: impl Layouter<F>,
@@ -66,7 +67,7 @@ impl<F: FieldExt> FibonacciChip<F> {
             |mut region| {
                 self.config.selector.enable(&mut region, 0)?;
                 self.config.selector.enable(&mut region, 1)?;
-
+                // Again we assign row 0 of instance column to row 0 of advice column
                 let mut a_cell = region.assign_advice_from_instance(
                     || "1",
                     self.config.instance,
@@ -74,6 +75,7 @@ impl<F: FieldExt> FibonacciChip<F> {
                     self.config.advice,
                     0,
                 )?;
+                // Assign row 1 of instance column to row 1 of advice column
                 let mut b_cell = region.assign_advice_from_instance(
                     || "1",
                     self.config.instance,
@@ -83,6 +85,7 @@ impl<F: FieldExt> FibonacciChip<F> {
                 )?;
 
                 for row in 2..nrows {
+                    // if statement to make sure we dont have selector in the last two rows.
                     if row < nrows - 2 {
                         self.config.selector.enable(&mut region, row)?;
                     }
